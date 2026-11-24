@@ -1,0 +1,18 @@
+dir obj
+dir build
+
+compiler ${CC}
+linker ${CC}
+
+src main.c
+
+
+buildflag -lSDL3
+build climb
+
+embedmake
+clean:
+	rm -r obj
+	rm -r build
+.PHONY: clean
+endmake
