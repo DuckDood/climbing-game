@@ -80,6 +80,8 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 	return SDL_APP_CONTINUE;
 }
 
+#define TO_SCREENSPACE(x, y, z) (((x - y) * 0.5 + 0.5) * z)
+
 SDL_AppResult SDL_AppIterate(void *appstate) {
 	struct appstate *state = appstate;
 
@@ -91,21 +93,27 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 255);
 	SDL_RenderClear(state->renderer);
 
-	float screenspace_robot_center_x = ((state->robot_pos_x - state->cam_x) * 0.5 + 0.5) * state->width;
-	float screenspace_robot_center_y = ((state->robot_pos_y - state->cam_y) * 0.5 + 0.5) * state->height;
+	//float screenspace_robot_center_x = ((state->robot_pos_x - state->cam_x) * 0.5 + 0.5) * state->width;
+	//float screenspace_robot_center_y = ((state->robot_pos_y - state->cam_y) * 0.5 + 0.5) * state->height;
 
+	float screenspace_robot_center_x = TO_SCREENSPACE(state->robot_pos_x, state->cam_x, state->width);
+	float screenspace_robot_center_y = TO_SCREENSPACE(state->robot_pos_y, state->cam_y, state->height);
 
 	float arm_angle = atan2(mouse_y - screenspace_robot_center_y, mouse_x - screenspace_robot_center_x);
 
-	float arm_end_pos_x = cos(arm_angle) * 100 + screenspace_robot_center_x;
-	float arm_end_pos_y = sin(arm_angle) * 100 + screenspace_robot_center_y;
+	float arm_end_pos_x = cos(arm_angle) * 0.5 + state->robot_pos_x;
+	float arm_end_pos_y = sin(arm_angle) * 0.5 + state->robot_pos_y;
+
+
+	float screenspace_arm_end_pos_x = TO_SCREENSPACE(arm_end_pos_x, state->cam_x, state->width);
+	float screenspace_arm_end_pos_y = TO_SCREENSPACE(arm_end_pos_y, state->cam_y, state->height);
 
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
 	SDL_FRect robot_rect = {screenspace_robot_center_x - 15, screenspace_robot_center_y - 15, 30, 30};
 
 	SDL_RenderRect(state->renderer, &robot_rect);
 
-	SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, arm_end_pos_x, arm_end_pos_y);
+	SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_end_pos_x, screenspace_arm_end_pos_y);
 
 	SDL_RenderPresent(state->renderer);
 
