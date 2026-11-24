@@ -8,6 +8,7 @@ src main.c
 
 
 buildflag -lSDL3
+buildflag -lm
 build climb
 
 embedmake

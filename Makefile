@@ -25,9 +25,9 @@ endif
 
 build/climb: obj/main.c.o 
 ifeq (${OSMODE}, l)
-	${CC} obj/main.c.o -o build/climb -lSDL3
+	${CC} obj/main.c.o -o build/climb -lSDL3 -lm
 else
-	${CC} obj/main.c.o -o build/climb -lSDL3
+	${CC} obj/main.c.o -o build/climb -lSDL3 -lm
 endif
 
 
