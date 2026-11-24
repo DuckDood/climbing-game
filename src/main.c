@@ -19,6 +19,9 @@ struct appstate {
 	float cam_x;
 	float cam_y;
 
+	float arm_angle;
+	float arm_angle_vel;
+
 
 	int width;
 	int height;
@@ -93,19 +96,57 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 255);
 	SDL_RenderClear(state->renderer);
 
+	float aspect_ratio = (float)state->height / state->width;
+
 	//float screenspace_robot_center_x = ((state->robot_pos_x - state->cam_x) * 0.5 + 0.5) * state->width;
 	//float screenspace_robot_center_y = ((state->robot_pos_y - state->cam_y) * 0.5 + 0.5) * state->height;
 
-	float screenspace_robot_center_x = TO_SCREENSPACE(state->robot_pos_x, state->cam_x, state->width);
+	float screenspace_robot_center_x = TO_SCREENSPACE(state->robot_pos_x * aspect_ratio, state->cam_x, state->width);
 	float screenspace_robot_center_y = TO_SCREENSPACE(state->robot_pos_y, state->cam_y, state->height);
 
-	float arm_angle = atan2(mouse_y - screenspace_robot_center_y, mouse_x - screenspace_robot_center_x);
+	float wished_arm_angle = atan2(mouse_y - screenspace_robot_center_y, mouse_x - screenspace_robot_center_x);
 
-	float arm_end_pos_x = cos(arm_angle) * 0.5 + state->robot_pos_x;
-	float arm_end_pos_y = sin(arm_angle) * 0.5 + state->robot_pos_y;
+	float arm_angle_diff = state->arm_angle - wished_arm_angle;
+	//https://stackoverflow.com/questions/11498169/dealing-with-angle-wrap-in-c-code
+
+	arm_angle_diff = fmod(arm_angle_diff + M_PI, 2*M_PI);
+	if(arm_angle_diff < 0) {
+		arm_angle_diff += 2*M_PI;
+	}
+	arm_angle_diff -= M_PI;
+
+	printf("aadiff: %f\n", arm_angle_diff);
+	if(arm_angle_diff < 0) {
+		state->arm_angle_vel += 0.000001 * fabs(arm_angle_diff);
+	}
+	if(arm_angle_diff > 0) {
+		state->arm_angle_vel -= 0.000001 * fabs(arm_angle_diff);
+	}
+
+	state->arm_angle_vel *= 0.999;
 
 
-	float screenspace_arm_end_pos_x = TO_SCREENSPACE(arm_end_pos_x, state->cam_x, state->width);
+	/*if(state->arm_angle > M_PI) {
+		state->arm_angle -= 2*M_PI;
+	}
+	if(state->arm_angle < -M_PI) {
+		state->arm_angle += 2*M_PI;
+	}
+
+	if(state->arm_angle < wished_arm_angle) {
+		state->arm_angle_vel += 0.0001;
+	}
+	if(state->arm_angle > wished_arm_angle) {
+		state->arm_angle_vel -= 0.0001;
+	}*/
+
+	state->arm_angle += state->arm_angle_vel;
+
+	float arm_end_pos_x = cos(state->arm_angle) * 0.5 + state->robot_pos_x;
+	float arm_end_pos_y = sin(state->arm_angle) * 0.5 + state->robot_pos_y;
+
+
+	float screenspace_arm_end_pos_x = TO_SCREENSPACE(arm_end_pos_x * aspect_ratio, state->cam_x, state->width);
 	float screenspace_arm_end_pos_y = TO_SCREENSPACE(arm_end_pos_y, state->cam_y, state->height);
 
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
