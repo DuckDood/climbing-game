@@ -25,6 +25,7 @@ struct appstate {
 	ball_2d robot;
 
 	ball_2d arm_end;
+	vec2 arm_lock_pos;
 
 	float cam_x;
 	float cam_y;
@@ -67,8 +68,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 	state->robot.velocity = (vec2){0};
 	state->robot.radius = 0.2;
 
-	state->arm_end.mass = 0.1;
-	state->arm_end.position = (vec2){0.5};
+	state->arm_end.mass = 0.00001;
+	state->arm_end.position = (vec2){0, 1};
 	state->arm_end.velocity = (vec2){0};
 	state->arm_end.radius = 0.1;
 
@@ -96,9 +97,13 @@ exit_now:
 }
 
 SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
+	struct appstate *state = appstate;
 	switch(event->type) {
 		case SDL_EVENT_QUIT:
 			return SDL_APP_SUCCESS;
+			break;
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
+			state->arm_lock_pos = state->arm_end.position;
 			break;
 	}
 
@@ -119,6 +124,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	state->robot.velocity.y += 0.01;
 	state->arm_end.velocity.y += 0.01;
+
+	if(mouse_down) {
+		v2_fmult(state->arm_end.velocity, 0);
+	}
 	begin_ball_update_2d(&state->robot, 1./60);
 	begin_ball_update_2d(&state->arm_end, 1./60);
 
@@ -133,6 +142,21 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	float screenspace_robot_center_y = TO_SCREENSPACE(state->robot.position.y, state->cam_y, state->height);
 
 	float wished_arm_angle = atan2(mouse_y - screenspace_robot_center_y, mouse_x - screenspace_robot_center_x);
+	float real_arm_angle = atan2(state->arm_end.position.y - state->robot.position.y, state->arm_end.position.x - state->robot.position.x);
+
+	float arm_angle_diff = fabs(wished_arm_angle - real_arm_angle);
+	printf("arm_angle_diff: %f\n", arm_angle_diff);
+
+	if(mouse_down) {
+		state->arm_end.mass = 100;
+		state->arm_end.position = state->arm_lock_pos;
+		state->robot.position.x -= cos(wished_arm_angle) * 0.0004 * arm_angle_diff;
+		state->robot.position.y -= sin(wished_arm_angle) * 0.0004 * arm_angle_diff;
+	} else {
+		state->arm_end.position.x += cos(wished_arm_angle) * 0.1 * arm_angle_diff;
+		state->arm_end.position.y += sin(wished_arm_angle) * 0.1 * arm_angle_diff;
+		state->arm_end.mass = 0.00001;
+	}
 
 	//float arm_angle_diff = state->arm_angle - wished_arm_angle;
 	//https://stackoverflow.com/questions/11498169/dealing-with-angle-wrap-in-c-code
