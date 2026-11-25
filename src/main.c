@@ -163,17 +163,19 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	float screenspace_arm_end_pos_x = TO_SCREENSPACE(state->arm_end_x * aspect_ratio, state->cam_x, state->width);
 	float screenspace_arm_end_pos_y = TO_SCREENSPACE(state->arm_end_y, state->cam_y, state->height);
 
-	//float floor_x = TO_SCREENSPACE();
+	float floor_y = TO_SCREENSPACE(0.9, state->cam_y, state->height);
 
 	//state->robot_velocity_y += 0.001;
 
 	//state->cam_x = (state->cam_x + state->robot_pos_x) * 0.5;
-	//state->cam_y = (state->cam_y + state->robot_pos_y) * 0.5;
+	state->cam_y = state->cam_y * 0.95 + state->robot_pos_y * 0.05;
 
 
+	float robot_width = 0.1;
+	float robot_height = 0.1;
 
-	if(state->robot_pos_y > 0.9) {
-		state->robot_pos_y = 0.9;
+	if(state->robot_pos_y > 0.9 - robot_height) {
+		state->robot_pos_y = 0.9 - robot_height;
 		float x_vel = state->robot_pos_x - state->robot_prev_x;
 		state->robot_pos_x += x_vel * -0.1;
 	}
@@ -181,12 +183,19 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	screenspace_robot_center_x = TO_SCREENSPACE(state->robot_pos_x * aspect_ratio, state->cam_x, state->width);
 	screenspace_robot_center_y = TO_SCREENSPACE(state->robot_pos_y, state->cam_y, state->height);
 
+	//float robot_width_scsp = TO_SCREENSPACE(robot_width * aspect_ratio, 0, state->width);
+	//float robot_height_scsp = TO_SCREENSPACE(robot_height, 0, state->width);
+	float robot_width_scsp = robot_width * aspect_ratio * state->width;
+	float robot_height_scsp = robot_height * state->height;
+
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
-	SDL_FRect robot_rect = {screenspace_robot_center_x - 15, screenspace_robot_center_y - 15, 30, 30};
+	SDL_FRect robot_rect = {screenspace_robot_center_x - robot_width_scsp / 2, screenspace_robot_center_y - robot_height_scsp / 2, robot_width_scsp, robot_height_scsp};
 
 	SDL_RenderRect(state->renderer, &robot_rect);
 
 	SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_end_pos_x, screenspace_arm_end_pos_y);
+
+	SDL_RenderLine(state->renderer, 0, floor_y, 800, floor_y);
 
 	SDL_RenderPresent(state->renderer);
 
