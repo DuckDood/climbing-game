@@ -122,8 +122,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_MouseButtonFlags mouse_flags = SDL_GetMouseState(&mouse_x, &mouse_y);
 	int mouse_down = SDL_BUTTON_LMASK & mouse_flags;
 
-	state->robot.velocity.y += 0.01;
-	state->arm_end.velocity.y += 0.01;
+	state->robot.velocity.y += 0.05;
+	state->arm_end.velocity.y += 0.05;
 
 	if(mouse_down) {
 		v2_fmult(state->arm_end.velocity, 0);
@@ -145,13 +145,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	float real_arm_angle = atan2(state->arm_end.position.y - state->robot.position.y, state->arm_end.position.x - state->robot.position.x);
 
 	float arm_angle_diff = fabs(wished_arm_angle - real_arm_angle);
+	//arm_angle_diff *= arm_angle_diff;
+	arm_angle_diff = 1;
 	printf("arm_angle_diff: %f\n", arm_angle_diff);
 
 	if(mouse_down) {
 		state->arm_end.mass = 100;
 		state->arm_end.position = state->arm_lock_pos;
-		state->robot.position.x -= cos(wished_arm_angle) * 0.0004 * arm_angle_diff;
-		state->robot.position.y -= sin(wished_arm_angle) * 0.0004 * arm_angle_diff;
+		state->robot.position.x -= cos(wished_arm_angle) * 0.004 * arm_angle_diff;
+		state->robot.position.y -= sin(wished_arm_angle) * 0.004 * arm_angle_diff;
 	} else {
 		state->arm_end.position.x += cos(wished_arm_angle) * 0.1 * arm_angle_diff;
 		state->arm_end.position.y += sin(wished_arm_angle) * 0.1 * arm_angle_diff;
@@ -193,13 +195,43 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	//float screenspace_arm_end_pos_x = TO_SCREENSPACE(state->arm_end_x * aspect_ratio, state->cam_x, state->width);
 	//float screenspace_arm_end_pos_y = TO_SCREENSPACE(state->arm_end_y, state->cam_y, state->height);
+	
+
+	SDL_Vertex height_vertices[6];
+
+	height_vertices[0].position.x = TO_SCREENSPACE(0, state->cam_x, state->width);
+	height_vertices[0].position.y = TO_SCREENSPACE(0, state->cam_y, state->height);
+
+	height_vertices[0].color.a = 1;
+	height_vertices[0].color.r = 1;
+	height_vertices[0].color.g = 1;
+	height_vertices[0].color.b = 1;
+
+	height_vertices[1].position.x = TO_SCREENSPACE(0, state->cam_x, state->width);
+	height_vertices[1].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height);
+
+	height_vertices[1].color.a = 1;
+	height_vertices[1].color.r = 1;
+	height_vertices[1].color.g = 0;
+	height_vertices[1].color.b = 0;
+
+	height_vertices[2].position.x = TO_SCREENSPACE(1, state->cam_x, state->width);
+	height_vertices[2].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height);
+
+	height_vertices[2].color.a = 1;
+	height_vertices[2].color.r = 1;
+	height_vertices[2].color.g = 0;
+	height_vertices[2].color.b = 0;
+
+	SDL_RenderGeometry(state->renderer, NULL, height_vertices, 3, NULL, 0);
 
 	float floor_y = TO_SCREENSPACE(0.9, state->cam_y, state->height);
 
 	//state->robot_velocity_y += 0.001;
 
 	//state->cam_x = (state->cam_x + state->robot_pos_x) * 0.5;
-	state->cam_y = state->cam_y * 0.95 + state->robot.position.y * 0.05;
+	state->cam_y = state->cam_y * 0.9 + state->robot.position.y * 0.1;
+	state->cam_x = state->cam_x * 0.99 + state->robot.position.x * 0.01;
 
 
 	float robot_width = state->robot.radius/2;
