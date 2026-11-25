@@ -230,8 +230,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	//state->robot_velocity_y += 0.001;
 
 	//state->cam_x = (state->cam_x + state->robot_pos_x) * 0.5;
-	state->cam_y = state->cam_y * 0.9 + state->robot.position.y * 0.1;
-	state->cam_x = state->cam_x * 0.99 + state->robot.position.x * 0.01;
+	if(mouse_down) {
+		state->cam_y = state->cam_y * 0.95 + state->arm_end.position.y * 0.05;
+		state->cam_x = state->cam_x * 0.95 + state->arm_end.position.x * 0.05;
+	} else { 
+		state->cam_y = state->cam_y * 0.9 + state->robot.position.y * 0.1;
+		state->cam_x = state->cam_x * 0.99 + state->robot.position.x * 0.01;
+	}
 
 
 	float robot_width = state->robot.radius/2;
