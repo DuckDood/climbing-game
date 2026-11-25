@@ -13,8 +13,8 @@ struct appstate {
 	float robot_pos_x;
 	float robot_pos_y;
 
-	float rebot_velocity_x;
-	float rebot_velocity_y;
+	float robot_velocity_x;
+	float robot_velocity_y;
 
 	float cam_x;
 	float cam_y;
@@ -44,6 +44,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 	if(!SDL_CreateWindowAndRenderer("climbing", 800, 600, 0, &state->window, &state->renderer)) {
 		goto exit;
 	}
+
+	SDL_SetRenderVSync(state->renderer, 1);
 
 	state->width = 800;
 	state->height = 600;
@@ -117,13 +119,13 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	printf("aadiff: %f\n", arm_angle_diff);
 	if(arm_angle_diff < 0) {
-		state->arm_angle_vel += 0.000001 * fabs(arm_angle_diff);
+		state->arm_angle_vel += 0.1 * fabs(arm_angle_diff);
 	}
 	if(arm_angle_diff > 0) {
-		state->arm_angle_vel -= 0.000001 * fabs(arm_angle_diff);
+		state->arm_angle_vel -= 0.1 * fabs(arm_angle_diff);
 	}
 
-	state->arm_angle_vel *= 0.999;
+	state->arm_angle_vel *= 0.75;
 
 
 	/*if(state->arm_angle > M_PI) {
@@ -148,6 +150,11 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	float screenspace_arm_end_pos_x = TO_SCREENSPACE(arm_end_pos_x * aspect_ratio, state->cam_x, state->width);
 	float screenspace_arm_end_pos_y = TO_SCREENSPACE(arm_end_pos_y, state->cam_y, state->height);
+
+	//state->robot_velocity_y -= 0.01;
+
+	state->robot_pos_y += state->robot_velocity_y;
+	state->robot_pos_x += state->robot_velocity_x;
 
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
 	SDL_FRect robot_rect = {screenspace_robot_center_x - 15, screenspace_robot_center_y - 15, 30, 30};
