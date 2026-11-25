@@ -1,0 +1,474 @@
+#include <math.h>
+#include <physics.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+
+
+void set_velocity_2d(ball_2d *body, vec2 velocity) {
+	body->velocity = velocity;
+}
+
+void begin_ball_update_2d(ball_2d *body, float deltatime) {
+	body->temp_position = body->position;
+	body->position = v2_add(body->position, v2_fmult(body->velocity, deltatime));
+}
+
+void end_ball_update_2d(ball_2d *body, float deltatime) {
+	body->velocity = v2_fdiv(v2_sub(body->position, body->temp_position), deltatime);
+}
+
+void solve_constraint_2d(constraint_function_2d constraint, vec2 **vectors, vec2 *gradient_outputs, float *inv_weights, int size, void *constraint_args, float deltatime, float compliance, constraint_types type) {
+	float lambda_numerator = constraint(vectors, gradient_outputs, size, constraint_args);
+	switch(type) {
+		case EQUALITY:
+			if(lambda_numerator == 0) return;
+			break;
+		case INEQ_GREATER:
+			if(lambda_numerator >= 0) return;
+			break;
+		case INEQ_LESS:
+			if(lambda_numerator <= 0) return;
+			break;
+	}
+
+	float lagrange_denominator = 0;
+	for(int i = 0; i < size; ++i) {
+		lagrange_denominator += inv_weights[i] * v2_dot(gradient_outputs[i], gradient_outputs[i]);
+	}
+	if(lagrange_denominator == 0) return; // just in case
+	float lagrange_multiplier = -lambda_numerator / (lagrange_denominator + compliance/(deltatime * deltatime));
+
+	for(int i = 0; i < size; ++i) {
+		vec2 correction = v2_fmult(gradient_outputs[i], lagrange_multiplier * inv_weights[i]);
+		*vectors[i] = v2_add(*vectors[i], correction);
+	}
+}
+
+
+// 3d functions
+void set_velocity_3d(ball_3d *body, vec3 velocity) {
+	body->velocity = velocity;
+}
+void begin_ball_update_3d(ball_3d *body, float deltatime) {
+	body->temp_position = body->position;
+	body->position = v3_add(body->position, v3_fmult(body->velocity, deltatime));
+}
+void end_ball_update_3d(ball_3d *body, float deltatime) {
+	body->velocity = v3_fdiv(v3_sub(body->position, body->temp_position), deltatime);
+}
+
+void solve_constraint_3d(constraint_function_3d constraint, vec3 **vectors, vec3 *gradient_outputs, float *inv_weights, int size, void *constraint_args, float deltatime, float compliance, constraint_types type) {
+	float lambda_numerator = constraint(vectors, gradient_outputs, size, constraint_args);
+	switch(type) {
+		case EQUALITY:
+			if(lambda_numerator == 0) return;
+			break;
+		case INEQ_GREATER:
+			if(lambda_numerator >= 0) return;
+			break;
+		case INEQ_LESS:
+			if(lambda_numerator <= 0) return;
+			break;
+	}
+
+	float lagrange_denominator = 0;
+	for(int i = 0; i < size; ++i) {
+		lagrange_denominator += inv_weights[i] * v3_dot(gradient_outputs[i], gradient_outputs[i]);
+	}
+	if(lagrange_denominator == 0) return; // just in case
+	float lagrange_multiplier = -lambda_numerator / (lagrange_denominator + compliance/(deltatime * deltatime));
+
+	for(int i = 0; i < size; ++i) {
+		vec3 correction = v3_fmult(gradient_outputs[i], lagrange_multiplier * inv_weights[i]);
+		*vectors[i] = v3_add(*vectors[i], correction);
+	}
+}
+
+//collision_info_3d check_collision_3d(ball_3d a, wall_3d b) {
+//	collision_info_3d info;
+//	info.hit = 0;
+//	vec3 relative_a_position = v3_sub(a.position, b.vertex_a);
+//	vec3 relative_b_position = v3_sub(a.position, b.vertex_b);
+//	vec3 relative_c_position = v3_sub(a.position, b.vertex_c);
+//
+//	float a_position_magnitude = v3_magnitude(relative_a_position);
+//	float b_position_magnitude = v3_magnitude(relative_b_position);
+//	float c_position_magnitude = v3_magnitude(relative_c_position);
+//
+//	// the edge will do the corners as well
+//	/*
+//	if(intersecting_a) {
+//		info.hit = 1;
+//		info.depth = -a_position_magnitude + a.radius;
+//		info.normal = v3_normalize(relative_a_position);
+//	}
+//
+//	if(intersecting_b) {
+//		info.hit = 1;
+//		info.depth = -b_position_magnitude + a.radius;
+//		info.normal = v3_normalize(relative_b_position);
+//	}
+//
+//	if(intersecting_c) {
+//		info.hit = 1;
+//		info.depth = -c_position_magnitude + a.radius;
+//		info.normal = v3_normalize(relative_c_position);
+//	}
+//	*/
+//
+//	// make a normal for each side and then check whether its inside 
+//	// super hard idk how to make that normal in 3d
+//	// maybe just like how it is in 2d?
+//	// i originally wanted to like project things along the triangles normal to and then to do a 2d triangle check
+//	// actually, the perpendicular trick with the -y, x or whatever it is wouldn't work in 3d
+//	// dangit
+//	vec3 a_b_edge = v3_sub(b.vertex_a, b.vertex_b);
+//	vec3 b_c_edge = v3_sub(b.vertex_b, b.vertex_c);
+//	vec3 c_a_edge = v3_sub(b.vertex_c, b.vertex_a);
+//
+//	// how to check if intersecting line? hmmm
+//	// something with dot product probably
+//	
+//	// idea: some random ray intersection test thing and then the cross product with the line and some vector that will give a vector that points away being the normal
+//	// idk how tho
+//
+//	// HOW??
+//	// idea: wall_normal = cross(b.normal, a_b_edge);
+//	// idk how position works though
+//	vec3 a_b_edge_normal = v3_normalize(v3_cross(b.normal, a_b_edge));
+//	vec3 b_c_edge_normal = v3_normalize(v3_cross(b.normal, b_c_edge));
+//	vec3 c_a_edge_normal = v3_normalize(v3_cross(b.normal, c_a_edge));
+//
+//	int a_b_edge_side = v3_dot(relative_a_position, a_b_edge_normal) <= 0;
+//	int b_c_edge_side = v3_dot(relative_b_position, b_c_edge_normal) <= 0;
+//	int c_a_edge_side = v3_dot(relative_c_position, c_a_edge_normal) <= 0;
+//	// figured it out
+//
+//	int in_triangle_plane = a_b_edge_side == b_c_edge_side && a_b_edge_side == c_a_edge_side;
+//
+//
+//	// my sister came up with this edge collision stuff
+//	// a_b_closest_point = a_b_side_length - (a_position_magnitude^2  - b_position_magnitude^2 - a_b_side_length^2)/-2 * a_b_side_length
+//	float a_b_side_length = v3_magnitude(a_b_edge);
+//	float a_b_closest_point_ratio = (a_b_side_length + (a_position_magnitude*a_position_magnitude - b_position_magnitude*b_position_magnitude - a_b_side_length*a_b_side_length)/(2 * a_b_side_length)) / a_b_side_length;
+//	if(a_b_closest_point_ratio < 0) a_b_closest_point_ratio = 0;
+//	if(a_b_closest_point_ratio > 1) a_b_closest_point_ratio = 1;
+//	vec3 a_b_closest_point = v3_lerp(b.vertex_a, b.vertex_b, a_b_closest_point_ratio);
+//
+//	float b_c_side_length = v3_magnitude(b_c_edge);
+//	float b_c_closest_point_ratio = (b_c_side_length + (b_position_magnitude*b_position_magnitude - c_position_magnitude*c_position_magnitude - b_c_side_length*b_c_side_length)/(2 * b_c_side_length)) / b_c_side_length;
+//	if(b_c_closest_point_ratio < 0) b_c_closest_point_ratio = 0;
+//	if(b_c_closest_point_ratio > 1) b_c_closest_point_ratio = 1;
+//	vec3 b_c_closest_point = v3_lerp(b.vertex_b, b.vertex_c, b_c_closest_point_ratio);
+//
+//	float c_a_side_length = v3_magnitude(c_a_edge);
+//	float c_a_closest_point_ratio = (c_a_side_length + (c_position_magnitude*c_position_magnitude - a_position_magnitude*a_position_magnitude - c_a_side_length*c_a_side_length)/(2 * c_a_side_length)) / c_a_side_length;
+//	if(c_a_closest_point_ratio < 0) c_a_closest_point_ratio = 0;
+//	if(c_a_closest_point_ratio > 1) c_a_closest_point_ratio = 1;
+//	vec3 c_a_closest_point = v3_lerp(b.vertex_c, b.vertex_a, c_a_closest_point_ratio);
+//
+//	vec3 a_b_closest_relative = v3_sub(a.position, a_b_closest_point);
+//	vec3 b_c_closest_relative = v3_sub(a.position, b_c_closest_point);
+//	vec3 c_a_closest_relative = v3_sub(a.position, c_a_closest_point);
+//
+//	float a_b_closest_magnitude = v3_magnitude(a_b_closest_relative);
+//	float b_c_closest_magnitude = v3_magnitude(b_c_closest_relative);
+//	float c_a_closest_magnitude = v3_magnitude(c_a_closest_relative);
+//	
+//	float closest_magnitude;
+//	vec3 closest_point;
+//	if(a_b_closest_magnitude < b_c_closest_magnitude) {
+//		closest_magnitude = a_b_closest_magnitude;
+//		closest_point = a_b_closest_relative;
+//	} else {
+//		closest_magnitude = b_c_closest_magnitude;
+//		closest_point = b_c_closest_relative;
+//	}
+//
+//	if(c_a_closest_magnitude < closest_magnitude) {
+//		closest_magnitude = c_a_closest_magnitude;
+//		closest_point = c_a_closest_relative;
+//	}
+//
+//	if(closest_magnitude < a.radius) {
+//		info.hit = 1;
+//		info.depth = -closest_magnitude + a.radius;
+//		info.normal = v3_normalize(closest_point);
+//		info.normal = v3_fmult(info.normal, 1);
+//	}
+//
+//	float side_dot = v3_dot(relative_a_position, b.normal);
+//	int side = (side_dot <= 0) * 2 - 1;
+//
+//	if(in_triangle_plane) {
+//		info.hit = in_triangle_plane && side*side_dot > -a.radius;
+//		info.depth = -side_dot - side * a.radius;
+//		info.normal = b.normal;
+//	}
+//
+//	return info;
+//}
+
+/*
+void resolve_collision_3d(ball_3d *body, collision_info_3d hit_info, float elasticity, float friction, float deltatime) {
+	if(hit_info.hit) {
+		vec3 velocity = v3_sub(body->position, body->previous_position);
+
+		friction *= deltatime; // works for some reason, seemingly it should be squared or not at all but idk
+		body->position = v3_sub(body->position, v3_fmult(hit_info.normal, -hit_info.depth));
+
+		float bounce_dot = -v3_dot(hit_info.normal, velocity);
+		vec3 bounce_velocity = v3_fmult(hit_info.normal, bounce_dot);
+		vec3 slide_velocity = v3_add(velocity, bounce_velocity); // this is the velocity without the speed into the wall, so its the velocity which slides along it i think if i did this right
+
+		vec3 out_velocity = v3_add(v3_fmult(slide_velocity, 1-friction), v3_fmult(bounce_velocity, elasticity));
+		set_velocity_3d(body, out_velocity);
+	}
+}
+void check_and_resolve_3d(ball_3d *body, wall_3d collider, float elasticity, float friction, float deltatime) {
+	resolve_collision_3d(body, check_collision_3d(*body, collider), elasticity, friction, deltatime);
+}
+
+void distance_constraint_3d(ball_3d *a, ball_3d *b, float length) {
+	float inverse_mass_a = 1/a->mass;
+	float inverse_mass_b = 1/b->mass;
+	vec3 delta = v3_sub(b->position, a->position);
+	float deltalength = v3_magnitude(delta);
+	float diff = (deltalength - length) / (deltalength*(inverse_mass_a + inverse_mass_b));
+	a->position = v3_add(a->position, v3_fmult(delta, inverse_mass_a * diff));
+	b->position = v3_sub(b->position, v3_fmult(delta, inverse_mass_b * diff));
+}
+void spring_constraint_3d(ball_3d *a, ball_3d *b, float length, float stiffness, float deltatime) {
+	float inverse_mass_a = 1/a->mass;
+	float inverse_mass_b = 1/b->mass;
+	vec3 delta = v3_sub(a->position, b->position);
+	float deltalength = v3_magnitude(delta);
+	// F = -kx
+	// k = stiffness
+	// x = deltalength - length
+	float force = -stiffness * (deltalength-length);
+
+	vec3 delta_norm = v3_fdiv(delta, deltalength);
+
+	// F = ma
+	// a = F/m
+	a->position = v3_add(a->position, v3_fmult(delta_norm, force * inverse_mass_a * deltatime*deltatime));
+	b->position = v3_sub(b->position, v3_fmult(delta_norm, force * inverse_mass_b * deltatime*deltatime));
+}
+
+void rope_constraint_3d(ball_3d *a, ball_3d *b, float length) {
+	vec3 relative_position = v3_sub(b->position, a->position);
+	float relative_magnitude = v3_magnitude(relative_position);
+	if(relative_magnitude < length) return;
+
+	distance_constraint_3d(a, b, length);
+}
+void rope_spring_constraint_3d(ball_3d *a, ball_3d *b, float length, float stiffness, float deltatime) {
+	vec3 relative_position = v3_sub(b->position, a->position);
+	float relative_magnitude = v3_magnitude(relative_position);
+	if(relative_magnitude < length) return;
+
+	spring_constraint_3d(a, b, length, stiffness, deltatime);
+}
+
+void update_linkage_3d(linkage_3d link, float deltatime) {
+	switch(link.type) {
+		case DISTANCE:
+			distance_constraint_3d(link.a, link.b, link.length);
+			break;
+		case SPRING:
+			spring_constraint_3d(link.a, link.b, link.length, link.stiffness, deltatime);
+			break;
+		case ROPE:
+			rope_constraint_3d(link.a, link.b, link.length);
+			break;
+		case ROPE_SPRING:
+			rope_spring_constraint_3d(link.a, link.b, link.length, link.stiffness, deltatime);
+			break;
+		default:
+			break;
+	}
+}*/
+
+//collision_info_3d check_ball_collision_3d(ball_3d a, ball_3d b) {
+//	float distance = v3_magnitude(v3_sub(a.position, b.position));
+//	collision_info_3d hit_info;
+//	//if(a.position.x + a.radius > b.position.x - b.radius && a.position.x - a.radius < b.position.x + b.radius /* x */ && a.position.y + a.radius > b.position.y - b.radius && a.position.y - a.radius < b.position.y + b.radius) {
+//		hit_info.hit = distance <= a.radius + b.radius;
+//		hit_info.normal = v3_normalize(v3_sub(a.position, b.position));
+//		hit_info.depth = distance - a.radius - b.radius;
+//	/*} else {
+//		hit_info.hit = 0;
+//	}*/
+//
+//	return hit_info;
+//
+//}
+/*void resolve_ball_collision_3d(ball_3d *a, ball_3d *b, collision_info_3d hit_info) {
+	// not 100 percent sure if this is the best way
+	if(hit_info.hit) {
+		float inverse_mass_a = 1/a->mass;
+		float inverse_mass_b = 1/b->mass;
+
+		float inverse_inverse_mass_total = 1/(inverse_mass_a + inverse_mass_b);
+
+		a->position = v3_sub(a->position, v3_fmult(hit_info.normal, hit_info.depth * inverse_mass_a * inverse_inverse_mass_total));
+		b->position = v3_sub(b->position, v3_fmult(hit_info.normal, hit_info.depth * -inverse_mass_b * inverse_inverse_mass_total));
+	}
+}
+void check_and_resolve_balls_3d(ball_3d *a, ball_3d *b) {
+	collision_info_3d hit_info = check_ball_collision_3d(*a, *b);
+	resolve_ball_collision_3d(a, b, hit_info);
+}
+
+inline vec3 v3_lerp3(vec3 a, vec3 b, vec3 c, float barycentric_a, float barycentric_b, float barycentric_c) {
+	return v3_add(v3_add(v3_fmult(a, barycentric_a), v3_fmult(b, barycentric_b)), v3_fmult(c, barycentric_c));
+}
+
+float closest_point_along_line(vec3 a, vec3 b, vec3 point) {
+	vec3 relative_a_position = v3_sub(point, a);
+	vec3 relative_b_position = v3_sub(point, b);
+
+	float a_position_magnitude = v3_magnitude(relative_a_position);
+	float b_position_magnitude = v3_magnitude(relative_b_position);
+
+	vec3 a_b_edge = v3_sub(a, b);
+	float a_b_side_length = v3_magnitude(a_b_edge);
+	float a_b_closest_point_ratio = (a_b_side_length + (a_position_magnitude*a_position_magnitude - b_position_magnitude*b_position_magnitude - a_b_side_length*a_b_side_length)/(2 * a_b_side_length)) / a_b_side_length;
+	if(a_b_closest_point_ratio < 0) a_b_closest_point_ratio = 0;
+	if(a_b_closest_point_ratio > 1) a_b_closest_point_ratio = 1;
+	return a_b_closest_point_ratio; // value used to lerp between two line points
+}
+
+void get_point_triangle_info(vec3 a, vec3 b, vec3 c, vec3 collider, float *barycentric_a, float *barycentric_b, float *barycentric_c, bool *inside_triangle_plane, float *distance, int *side, vec3 *closest_normal) {
+	vec3 a_b_edge = v3_sub(a, b); // gets relative edges
+	vec3 b_c_edge = v3_sub(b, c);
+	vec3 c_a_edge = v3_sub(c, a);
+
+	vec3 relative_a_position = v3_sub(collider, a); // gets relative positions from vertices
+	vec3 relative_b_position = v3_sub(collider, b);
+	vec3 relative_c_position = v3_sub(collider, c);
+
+	vec3 normal = v3_cross(a_b_edge, b_c_edge); // get normal vector
+
+	float normal_magnitude = v3_magnitude(normal);
+	float inverse_triangle_area = 1/(normal_magnitude * 0.5); // the magnitude of the cross product also gives double the area (for some reason)
+	normal = v3_fdiv(normal, normal_magnitude); // normalize normal vector
+
+	vec3 a_b_edge_normal = v3_normalize(v3_cross(normal, a_b_edge)); // gives a vector pointing off of each edge into the triangle
+	vec3 b_c_edge_normal = v3_normalize(v3_cross(normal, b_c_edge));
+	vec3 c_a_edge_normal = v3_normalize(v3_cross(normal, c_a_edge));
+
+
+	float a_b_edge_height = v3_dot(relative_a_position, a_b_edge_normal); // gives the distance between the edge and the point
+	float b_c_edge_height = v3_dot(relative_b_position, b_c_edge_normal);
+	float c_a_edge_height = v3_dot(relative_c_position, c_a_edge_normal);
+
+	float a_b_edge_area = a_b_edge_height * v3_magnitude(a_b_edge) * 0.5; // gives the area of the triangle made from each sides vertices and the point we're checking against (edge height toward point * edge length * 0.5)
+	float b_c_edge_area = b_c_edge_height * v3_magnitude(b_c_edge) * 0.5;
+	float c_a_edge_area = c_a_edge_height * v3_magnitude(c_a_edge) * 0.5;
+	
+	int a_b_edge_side = a_b_edge_height <= 0;
+	int b_c_edge_side = b_c_edge_height <= 0;
+	int c_a_edge_side = c_a_edge_height <= 0;
+
+	*barycentric_a = -b_c_edge_area * inverse_triangle_area; // convert to barycentrics
+	*barycentric_b = -c_a_edge_area * inverse_triangle_area;
+	*barycentric_c = -a_b_edge_area * inverse_triangle_area;
+
+	*inside_triangle_plane = a_b_edge_side == b_c_edge_side && a_b_edge_side == c_a_edge_side; // inside triangle (on the same side of each line)
+	float face_dot = v3_dot(relative_a_position, normal);
+	*side = (face_dot <= 0) * 2 - 1;
+	*distance = fabs(face_dot);
+
+	*closest_normal = normal;
+
+	// detected face stuff but still need to do edges
+	if(!*inside_triangle_plane) {
+		// do line checks
+		
+		float a_b_lerp_t = closest_point_along_line(a, b, collider);
+		float b_c_lerp_t = closest_point_along_line(b, c, collider);
+		float c_a_lerp_t = closest_point_along_line(c, a, collider);
+
+		vec3 a_b_closest_point = v3_lerp(a, b, a_b_lerp_t);
+		vec3 b_c_closest_point = v3_lerp(b, c, b_c_lerp_t);
+		vec3 c_a_closest_point = v3_lerp(c, a, c_a_lerp_t);
+
+		float a_b_distance = v3_magnitude(v3_sub(a_b_closest_point, collider));
+		float b_c_distance = v3_magnitude(v3_sub(b_c_closest_point, collider));
+		float c_a_distance = v3_magnitude(v3_sub(c_a_closest_point, collider));
+		
+		float closest_distance = a_b_distance;
+		vec3 closest = a_b_closest_point;
+
+		*barycentric_a = 1-a_b_lerp_t;
+		*barycentric_b = a_b_lerp_t;
+		*barycentric_c = 0;
+
+		if(b_c_distance < closest_distance) {
+			closest_distance = b_c_distance;
+			closest = b_c_closest_point;
+
+			*barycentric_a = 0;
+			*barycentric_b = 1-b_c_lerp_t;
+			*barycentric_c = b_c_lerp_t;
+		}
+		if(c_a_distance < closest_distance) {
+			closest_distance = c_a_distance;
+			closest = c_a_closest_point;
+
+			*barycentric_a = c_a_lerp_t;
+			*barycentric_b = 0;
+			*barycentric_c = 1-c_a_lerp_t;
+		}
+		*distance = closest_distance;
+		*closest_normal = v3_fmult(v3_normalize(v3_sub(closest, collider)), *side); // we don't want the side affecting the edge normals, but we still want to keep the information for any callers
+	}
+}
+
+
+void collide_wall_3d(ball_3d *a, ball_3d *b, ball_3d *c, ball_3d *collider) {
+	float min_x, min_y, min_z;
+	float max_x, max_y, max_z;
+	min_x = fmin(fmin(a->position.x, b->position.x), c->position.x) - collider->radius;
+	min_y = fmin(fmin(a->position.y, b->position.y), c->position.y) - collider->radius;
+	min_z = fmin(fmin(a->position.z, b->position.z), c->position.z) - collider->radius;
+
+	max_x = fmax(fmax(a->position.x, b->position.x), c->position.x) + collider->radius;
+	max_y = fmax(fmax(a->position.y, b->position.y), c->position.y) + collider->radius;
+	max_z = fmax(fmax(a->position.z, b->position.z), c->position.z) + collider->radius;
+
+	
+	if(collider->position.x < min_x || collider->position.x > max_x ||
+	collider->position.y < min_y || collider->position.y > max_y ||
+	collider->position.z < min_z || collider->position.z > max_z) return;
+
+	float a_barycentric, b_barycentric, c_barycentric, distance;
+	bool in_triangle_plane;
+	int side;
+	vec3 normal;
+
+	get_point_triangle_info(a->position, b->position, c->position, collider->position, &a_barycentric, &b_barycentric, &c_barycentric, &in_triangle_plane, &distance, &side, &normal);
+
+
+	if(distance < collider->radius) {
+		float inverse_mass_collider = 1/collider->mass;
+
+		float inverse_mass_a = 1/a->mass;
+		float inverse_mass_b = 1/b->mass;
+		float inverse_mass_c = 1/c->mass;
+
+		float a_move_ratio = a_barycentric;
+		float b_move_ratio = b_barycentric;
+		float c_move_ratio = c_barycentric;
+
+		float inverse_inverse_mass_total = 1/(inverse_mass_collider + inverse_mass_a * a_move_ratio + inverse_mass_b * b_move_ratio + inverse_mass_c * c_move_ratio);
+
+		collider->position = v3_add(collider->position, v3_fmult(normal, side * inverse_mass_collider * inverse_inverse_mass_total * (distance - collider->radius)));
+		a->position = v3_sub(a->position, v3_fmult(normal, side * a_move_ratio * inverse_mass_a * inverse_inverse_mass_total * (distance - collider->radius)));
+		b->position = v3_sub(b->position, v3_fmult(normal, side * b_move_ratio * inverse_mass_b * inverse_inverse_mass_total * (distance - collider->radius)));
+		c->position = v3_sub(c->position, v3_fmult(normal, side * c_move_ratio * inverse_mass_c * inverse_inverse_mass_total * (distance - collider->radius)));
+	}
+}*/

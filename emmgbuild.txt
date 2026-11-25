@@ -4,8 +4,19 @@ dir build
 compiler ${CC}
 linker ${CC}
 
+srcflag -Iengine/include
+srcflag -std=c23
+
+
 src main.c
 
+
+srcdir engine/src
+src constraints.c
+src physics.c
+src shape_generators.c
+src spatial.c
+src types.c
 
 buildflag -lSDL3
 buildflag -lm

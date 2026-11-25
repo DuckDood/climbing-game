@@ -6,26 +6,35 @@
 #include <SDL3/SDL_main.h>
 #include <SDL3/SDL.h>
 
+#include <physics.h>
+
+#ifndef M_PI
+#define M_PI 3.141592653589793238462643
+#endif
+
 struct appstate {
 	SDL_Window *window;
 	SDL_Renderer *renderer;
 
-	float robot_pos_x;
+	/*float robot_pos_x;
 	float robot_pos_y;
 
 	float robot_prev_x;
-	float robot_prev_y;
+	float robot_prev_y;*/
+
+	ball_2d robot;
+
+	ball_2d arm_end;
 
 	float cam_x;
 	float cam_y;
 
-	float arm_angle;
-	float arm_angle_vel;
+	//float arm_angle;
+	//float arm_angle_vel;
 
-	float arm_end_x;
-	float arm_end_y;
-
-
+	//float arm_end_x;
+	//float arm_end_y;
+	
 	int width;
 	int height;
 };
@@ -53,11 +62,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 	state->width = 800;
 	state->height = 600;
 
-	state->robot_pos_x = 0.00000001;
-	state->robot_prev_x = 0;
+	state->robot.mass = 1;
+	state->robot.position = (vec2){0};
+	state->robot.velocity = (vec2){0};
+	state->robot.radius = 0.2;
 
-	state->robot_pos_y = 0;
-	state->robot_prev_y = 0;
+	state->arm_end.mass = 0.1;
+	state->arm_end.position = (vec2){0.5};
+	state->arm_end.velocity = (vec2){0};
+	state->arm_end.radius = 0.1;
 
 	return SDL_APP_CONTINUE;
 
@@ -104,16 +117,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_MouseButtonFlags mouse_flags = SDL_GetMouseState(&mouse_x, &mouse_y);
 	int mouse_down = SDL_BUTTON_LMASK & mouse_flags;
 
-	printf("velocity: %f\n", state->robot_pos_x - state->robot_prev_x);
-	float new_robot_pos_x = state->robot_pos_x * 2 - state->robot_prev_x;
-	float new_robot_pos_y = state->robot_pos_y * 2 - state->robot_prev_y + 0.001;
-
-	state->robot_prev_x = state->robot_pos_x;
-	state->robot_prev_y = state->robot_pos_y;
-
-	state->robot_pos_x = new_robot_pos_x;
-	state->robot_pos_y = new_robot_pos_y;
-
+	state->robot.velocity.y += 0.01;
+	state->arm_end.velocity.y += 0.01;
+	begin_ball_update_2d(&state->robot, 1./60);
+	begin_ball_update_2d(&state->arm_end, 1./60);
 
 
 
@@ -122,15 +129,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	float aspect_ratio = (float)state->height / state->width;
 
-	float screenspace_robot_center_x = TO_SCREENSPACE(state->robot_pos_x * aspect_ratio, state->cam_x, state->width);
-	float screenspace_robot_center_y = TO_SCREENSPACE(state->robot_pos_y, state->cam_y, state->height);
+	float screenspace_robot_center_x = TO_SCREENSPACE(state->robot.position.x * aspect_ratio, state->cam_x, state->width);
+	float screenspace_robot_center_y = TO_SCREENSPACE(state->robot.position.y, state->cam_y, state->height);
 
 	float wished_arm_angle = atan2(mouse_y - screenspace_robot_center_y, mouse_x - screenspace_robot_center_x);
 
-	float arm_angle_diff = state->arm_angle - wished_arm_angle;
+	//float arm_angle_diff = state->arm_angle - wished_arm_angle;
 	//https://stackoverflow.com/questions/11498169/dealing-with-angle-wrap-in-c-code
 
-	arm_angle_diff = fmod(arm_angle_diff + M_PI, 2*M_PI);
+	/*arm_angle_diff = fmod(arm_angle_diff + M_PI, 2*M_PI);
 	if(arm_angle_diff < 0) {
 		arm_angle_diff += 2*M_PI;
 	}
@@ -146,42 +153,54 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	state->arm_angle_vel *= 0.75;
 
 
-	state->arm_angle += state->arm_angle_vel;
+	state->arm_angle += state->arm_angle_vel;*/
 
 
 
-	if(mouse_down) {
+	/*if(mouse_down) {
 		state->robot_pos_x = -(cos(state->arm_angle) * 0.5) + state->arm_end_x;
 		state->robot_pos_y = -(sin(state->arm_angle) * 0.5) + state->arm_end_y;
 		
 	} else {
 		state->arm_end_x = cos(state->arm_angle) * 0.5 + state->robot_pos_x;
 		state->arm_end_y = sin(state->arm_angle) * 0.5 + state->robot_pos_y;
-	}
+	}*/
 
 
-	float screenspace_arm_end_pos_x = TO_SCREENSPACE(state->arm_end_x * aspect_ratio, state->cam_x, state->width);
-	float screenspace_arm_end_pos_y = TO_SCREENSPACE(state->arm_end_y, state->cam_y, state->height);
+	//float screenspace_arm_end_pos_x = TO_SCREENSPACE(state->arm_end_x * aspect_ratio, state->cam_x, state->width);
+	//float screenspace_arm_end_pos_y = TO_SCREENSPACE(state->arm_end_y, state->cam_y, state->height);
 
 	float floor_y = TO_SCREENSPACE(0.9, state->cam_y, state->height);
 
 	//state->robot_velocity_y += 0.001;
 
 	//state->cam_x = (state->cam_x + state->robot_pos_x) * 0.5;
-	state->cam_y = state->cam_y * 0.95 + state->robot_pos_y * 0.05;
+	state->cam_y = state->cam_y * 0.95 + state->robot.position.y * 0.05;
 
 
-	float robot_width = 0.1;
-	float robot_height = 0.1;
+	float robot_width = state->robot.radius/2;
+	float robot_height = state->robot.radius/2;
 
-	if(state->robot_pos_y > 0.9 - robot_height) {
-		state->robot_pos_y = 0.9 - robot_height;
+	/*if(state->robot.position.y > 0.9 - robot_height) {
+		state->robot.position.y = 0.9 - robot_height;
 		float x_vel = state->robot_pos_x - state->robot_prev_x;
 		state->robot_pos_x += x_vel * -0.1;
-	}
+	}*/
+	vec2 output_ptr[2];
 
-	screenspace_robot_center_x = TO_SCREENSPACE(state->robot_pos_x * aspect_ratio, state->cam_x, state->width);
-	screenspace_robot_center_y = TO_SCREENSPACE(state->robot_pos_y, state->cam_y, state->height);
+
+	solve_constraint_2d(boundary_constraint_2d, (vec2*[]){&state->robot.position}, output_ptr, (float[]){1}, 1, &(boundary_args_2d){(vec2){0, 1}, (vec2){0, -1}, state->robot.radius}, 1/60., 0, INEQ_GREATER);
+
+	solve_constraint_2d(boundary_constraint_2d, (vec2*[]){&state->arm_end.position}, output_ptr, (float[]){1}, 1, &(boundary_args_2d){(vec2){0, 1}, (vec2){0, -1}, state->arm_end.radius}, 1/60., 0, INEQ_GREATER);
+
+	solve_constraint_2d(distance_constraint_2d, (vec2*[]){&state->robot.position, &state->arm_end.position}, output_ptr, (float[]){1/state->robot.mass, 1/state->arm_end.mass}, 2, (float[]){0.5}, 1/60., 0, EQUALITY);
+
+
+	screenspace_robot_center_x = TO_SCREENSPACE(state->robot.position.x * aspect_ratio, state->cam_x, state->width);
+	screenspace_robot_center_y = TO_SCREENSPACE(state->robot.position.y, state->cam_y, state->height);
+
+	float screenspace_arm_center_x = TO_SCREENSPACE(state->arm_end.position.x * aspect_ratio, state->cam_x, state->width);
+	float screenspace_arm_center_y = TO_SCREENSPACE(state->arm_end.position.y, state->cam_y, state->height);
 
 	//float robot_width_scsp = TO_SCREENSPACE(robot_width * aspect_ratio, 0, state->width);
 	//float robot_height_scsp = TO_SCREENSPACE(robot_height, 0, state->width);
@@ -193,11 +212,14 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	SDL_RenderRect(state->renderer, &robot_rect);
 
-	SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_end_pos_x, screenspace_arm_end_pos_y);
+	SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_center_x, screenspace_arm_center_y);
 
 	SDL_RenderLine(state->renderer, 0, floor_y, 800, floor_y);
 
 	SDL_RenderPresent(state->renderer);
+
+	end_ball_update_2d(&state->robot, 1/60.);
+	end_ball_update_2d(&state->arm_end, 1/60.);
 
 	return SDL_APP_CONTINUE;
 }
