@@ -56,7 +56,6 @@ float boundary_constraint_2d(vec2 **vectors, vec2 *gradients, [[maybe_unused]]in
 	vec2 relative_pos = v2_sub(*vectors[0], args->position);
 
 	gradients[0] = args->normal;
-	printf("v2_dot: %f\n", v2_dot(relative_pos, args->normal) - args->distance);
 	return v2_dot(relative_pos, args->normal) - args->distance;
 }
 
