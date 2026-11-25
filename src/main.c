@@ -22,6 +22,9 @@ struct appstate {
 	float arm_angle;
 	float arm_angle_vel;
 
+	float arm_end_x;
+	float arm_end_y;
+
 
 	int width;
 	int height;
@@ -93,7 +96,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	float mouse_x;
 	float mouse_y;
 
-	SDL_GetMouseState(&mouse_x, &mouse_y);
+	SDL_MouseButtonFlags mouse_flags = SDL_GetMouseState(&mouse_x, &mouse_y);
+	int mouse_down = SDL_BUTTON_LMASK & mouse_flags;
 
 	SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 255);
 	SDL_RenderClear(state->renderer);
@@ -144,17 +148,31 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	state->arm_angle += state->arm_angle_vel;
 
-	float arm_end_pos_x = cos(state->arm_angle) * 0.5 + state->robot_pos_x;
-	float arm_end_pos_y = sin(state->arm_angle) * 0.5 + state->robot_pos_y;
 
 
-	float screenspace_arm_end_pos_x = TO_SCREENSPACE(arm_end_pos_x * aspect_ratio, state->cam_x, state->width);
-	float screenspace_arm_end_pos_y = TO_SCREENSPACE(arm_end_pos_y, state->cam_y, state->height);
+	if(mouse_down) {
+		state->robot_pos_x = -(cos(state->arm_angle) * 0.5) + state->arm_end_x;
+		state->robot_pos_y = -(sin(state->arm_angle) * 0.5) + state->arm_end_y;
+		
+	} else {
+		state->arm_end_x = cos(state->arm_angle) * 0.5 + state->robot_pos_x;
+		state->arm_end_y = sin(state->arm_angle) * 0.5 + state->robot_pos_y;
+	}
 
-	//state->robot_velocity_y -= 0.01;
+
+	float screenspace_arm_end_pos_x = TO_SCREENSPACE(state->arm_end_x * aspect_ratio, state->cam_x, state->width);
+	float screenspace_arm_end_pos_y = TO_SCREENSPACE(state->arm_end_y, state->cam_y, state->height);
+
+	state->robot_velocity_y += 0.001;
 
 	state->robot_pos_y += state->robot_velocity_y;
 	state->robot_pos_x += state->robot_velocity_x;
+
+
+	if(state->robot_pos_y > 0.9) {
+		state->robot_pos_y = 0.9;
+		state->robot_velocity_y = 0;
+	}
 
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
 	SDL_FRect robot_rect = {screenspace_robot_center_x - 15, screenspace_robot_center_y - 15, 30, 30};
