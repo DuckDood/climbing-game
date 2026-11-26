@@ -158,8 +158,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	if(mouse_down) {
 		state->arm_end.mass = 100;
 		state->arm_end.position = state->arm_lock_pos;
-		state->robot.position.x -= cos(wished_arm_angle) * 0.004 * arm_angle_diff;
-		state->robot.position.y -= sin(wished_arm_angle) * 0.004 * arm_angle_diff;
 	} else {
 		state->arm_end.position.x += cos(wished_arm_angle) * 0.1 * arm_angle_diff;
 		state->arm_end.position.y += sin(wished_arm_angle) * 0.1 * arm_angle_diff;
@@ -214,7 +212,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	height_vertices[0].color.b = 1;
 
 	height_vertices[1].position.x = TO_SCREENSPACE(0, state->cam_x, state->width, aspect_ratio);
-	height_vertices[1].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height, 1);
+	height_vertices[1].position.y = TO_SCREENSPACE(-20, state->cam_y, state->height, 1);
 
 	height_vertices[1].color.a = 1;
 	height_vertices[1].color.r = 1;
@@ -222,7 +220,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	height_vertices[1].color.b = 0;
 
 	height_vertices[2].position.x = TO_SCREENSPACE(1, state->cam_x, state->width, aspect_ratio);
-	height_vertices[2].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height, 1);
+	height_vertices[2].position.y = TO_SCREENSPACE(-20, state->cam_y, state->height, 1);
 
 	height_vertices[2].color.a = 1;
 	height_vertices[2].color.r = 1;
@@ -261,10 +259,19 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	solve_constraint_2d(boundary_constraint_2d, (vec2*[]){&state->arm_end.position}, output_ptr, (float[]){1}, 1, &(boundary_args_2d){(vec2){0, 1}, (vec2){0, -1}, state->arm_end.radius}, 1/60., 0, INEQ_GREATER);
 
 	if(kbd_state[SDL_SCANCODE_SPACE]) {
-		state->arm_len = state->arm_len * 0.5 + 0.3 * 0.5;
+		state->arm_len = state->arm_len * 0.6 + 0.3 * 0.4;
 	} else {
-		state->arm_len = state->arm_len * 0.5 + 0.5 * 0.5;
+		state->arm_len = state->arm_len * 0.8 + 0.5 * 0.2;
 	}
+
+	if(kbd_state[SDL_SCANCODE_A]) {
+		state->robot.position.x -= 0.001;
+	}
+	if(kbd_state[SDL_SCANCODE_D]) {
+		state->robot.position.x += 0.001;
+	}
+
+
 	solve_constraint_2d(distance_constraint_2d, (vec2*[]){&state->robot.position, &state->arm_end.position}, output_ptr, (float[]){1/state->robot.mass, 1/state->arm_end.mass}, 2, (float[]){state->arm_len}, 1/60., 0, EQUALITY);
 
 
