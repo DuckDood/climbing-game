@@ -111,7 +111,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 	return SDL_APP_CONTINUE;
 }
 
-#define TO_SCREENSPACE(x, y, z) (((x - y) * 0.5 + 0.5) * z)
+#define TO_SCREENSPACE(x, y, z, w) ((((x - y)*w) * 0.5 + 0.5) * z)
 
 SDL_AppResult SDL_AppIterate(void *appstate) {
 	struct appstate *state = appstate;
@@ -138,8 +138,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	float aspect_ratio = (float)state->height / state->width;
 
-	float screenspace_robot_center_x = TO_SCREENSPACE(state->robot.position.x * aspect_ratio, state->cam_x, state->width);
-	float screenspace_robot_center_y = TO_SCREENSPACE(state->robot.position.y, state->cam_y, state->height);
+	float screenspace_robot_center_x = TO_SCREENSPACE(state->robot.position.x, state->cam_x, state->width, aspect_ratio);
+	float screenspace_robot_center_y = TO_SCREENSPACE(state->robot.position.y, state->cam_y, state->height, 1);
 
 	float wished_arm_angle = atan2(mouse_y - screenspace_robot_center_y, mouse_x - screenspace_robot_center_x);
 	float real_arm_angle = atan2(state->arm_end.position.y - state->robot.position.y, state->arm_end.position.x - state->robot.position.x);
@@ -199,24 +199,24 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	SDL_Vertex height_vertices[6];
 
-	height_vertices[0].position.x = TO_SCREENSPACE(0, state->cam_x, state->width);
-	height_vertices[0].position.y = TO_SCREENSPACE(0, state->cam_y, state->height);
+	height_vertices[0].position.x = TO_SCREENSPACE(0, state->cam_x, state->width, aspect_ratio);
+	height_vertices[0].position.y = TO_SCREENSPACE(0, state->cam_y, state->height, 1);
 
 	height_vertices[0].color.a = 1;
 	height_vertices[0].color.r = 1;
 	height_vertices[0].color.g = 1;
 	height_vertices[0].color.b = 1;
 
-	height_vertices[1].position.x = TO_SCREENSPACE(0, state->cam_x, state->width);
-	height_vertices[1].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height);
+	height_vertices[1].position.x = TO_SCREENSPACE(0, state->cam_x, state->width, aspect_ratio);
+	height_vertices[1].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height, 1);
 
 	height_vertices[1].color.a = 1;
 	height_vertices[1].color.r = 1;
 	height_vertices[1].color.g = 0;
 	height_vertices[1].color.b = 0;
 
-	height_vertices[2].position.x = TO_SCREENSPACE(1, state->cam_x, state->width);
-	height_vertices[2].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height);
+	height_vertices[2].position.x = TO_SCREENSPACE(1, state->cam_x, state->width, aspect_ratio);
+	height_vertices[2].position.y = TO_SCREENSPACE(-50, state->cam_y, state->height, 1);
 
 	height_vertices[2].color.a = 1;
 	height_vertices[2].color.r = 1;
@@ -225,7 +225,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	SDL_RenderGeometry(state->renderer, NULL, height_vertices, 3, NULL, 0);
 
-	float floor_y = TO_SCREENSPACE(0.9, state->cam_y, state->height);
+	float floor_y = TO_SCREENSPACE(0.9, state->cam_y, state->height, 1);
 
 	//state->robot_velocity_y += 0.001;
 
@@ -257,15 +257,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	solve_constraint_2d(distance_constraint_2d, (vec2*[]){&state->robot.position, &state->arm_end.position}, output_ptr, (float[]){1/state->robot.mass, 1/state->arm_end.mass}, 2, (float[]){0.5}, 1/60., 0, EQUALITY);
 
 
-	screenspace_robot_center_x = TO_SCREENSPACE(state->robot.position.x * aspect_ratio, state->cam_x, state->width);
-	screenspace_robot_center_y = TO_SCREENSPACE(state->robot.position.y, state->cam_y, state->height);
+	screenspace_robot_center_x = TO_SCREENSPACE(state->robot.position.x, state->cam_x, state->width, aspect_ratio);
+	screenspace_robot_center_y = TO_SCREENSPACE(state->robot.position.y, state->cam_y, state->height, 1);
 
-	float screenspace_arm_center_x = TO_SCREENSPACE(state->arm_end.position.x * aspect_ratio, state->cam_x, state->width);
-	float screenspace_arm_center_y = TO_SCREENSPACE(state->arm_end.position.y, state->cam_y, state->height);
+	float screenspace_arm_center_x = TO_SCREENSPACE(state->arm_end.position.x, state->cam_x, state->width, aspect_ratio);
+	float screenspace_arm_center_y = TO_SCREENSPACE(state->arm_end.position.y, state->cam_y, state->height, 1);
 
 	//float robot_width_scsp = TO_SCREENSPACE(robot_width * aspect_ratio, 0, state->width);
 	//float robot_height_scsp = TO_SCREENSPACE(robot_height, 0, state->width);
-	float robot_width_scsp = robot_width * aspect_ratio * state->width;
+	float robot_width_scsp = robot_width * state->width * aspect_ratio;
 	float robot_height_scsp = robot_height * state->height;
 
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
