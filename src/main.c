@@ -30,6 +30,8 @@ struct appstate {
 	float cam_x;
 	float cam_y;
 
+	float arm_len;
+
 	//float arm_angle;
 	//float arm_angle_vel;
 
@@ -72,6 +74,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 	state->arm_end.position = (vec2){0, 1};
 	state->arm_end.velocity = (vec2){0};
 	state->arm_end.radius = 0.1;
+
+	state->arm_len = 0.5;
 
 	return SDL_APP_CONTINUE;
 
@@ -121,6 +125,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	SDL_MouseButtonFlags mouse_flags = SDL_GetMouseState(&mouse_x, &mouse_y);
 	int mouse_down = SDL_BUTTON_LMASK & mouse_flags;
+
+	const _Bool *kbd_state = SDL_GetKeyboardState(NULL);
 
 	state->robot.velocity.y += 0.05;
 	state->arm_end.velocity.y += 0.05;
@@ -254,7 +260,12 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	solve_constraint_2d(boundary_constraint_2d, (vec2*[]){&state->arm_end.position}, output_ptr, (float[]){1}, 1, &(boundary_args_2d){(vec2){0, 1}, (vec2){0, -1}, state->arm_end.radius}, 1/60., 0, INEQ_GREATER);
 
-	solve_constraint_2d(distance_constraint_2d, (vec2*[]){&state->robot.position, &state->arm_end.position}, output_ptr, (float[]){1/state->robot.mass, 1/state->arm_end.mass}, 2, (float[]){0.5}, 1/60., 0, EQUALITY);
+	if(kbd_state[SDL_SCANCODE_SPACE]) {
+		state->arm_len = state->arm_len * 0.5 + 0.3 * 0.5;
+	} else {
+		state->arm_len = state->arm_len * 0.5 + 0.5 * 0.5;
+	}
+	solve_constraint_2d(distance_constraint_2d, (vec2*[]){&state->robot.position, &state->arm_end.position}, output_ptr, (float[]){1/state->robot.mass, 1/state->arm_end.mass}, 2, (float[]){state->arm_len}, 1/60., 0, EQUALITY);
 
 
 	screenspace_robot_center_x = TO_SCREENSPACE(state->robot.position.x, state->cam_x, state->width, aspect_ratio);
