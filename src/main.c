@@ -40,6 +40,9 @@ struct appstate {
 	
 	SDL_Texture *robot_sprite;
 
+	SDL_Texture *armopen_sprite;
+	SDL_Texture *armclose_sprite;
+
 	int width;
 	int height;
 };
@@ -64,6 +67,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
 	state->robot_sprite = SDL_CreateTextureFromSurface(state->renderer, SDL_LoadPNG("resources/robot.png"));
 	SDL_SetTextureScaleMode(state->robot_sprite, SDL_SCALEMODE_PIXELART);
+	
+	state->armopen_sprite = SDL_CreateTextureFromSurface(state->renderer, SDL_LoadPNG("resources/armopen.png"));
+	SDL_SetTextureScaleMode(state->armopen_sprite, SDL_SCALEMODE_PIXELART);
+
+	state->armclose_sprite = SDL_CreateTextureFromSurface(state->renderer, SDL_LoadPNG("resources/armclose.png"));
+	SDL_SetTextureScaleMode(state->armclose_sprite, SDL_SCALEMODE_PIXELART);
 
 	SDL_SetRenderVSync(state->renderer, 1);
 
@@ -292,6 +301,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	float robot_height_scsp = robot_height * state->height;
 
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
+
+	SDL_FRect arm_rect = {screenspace_robot_center_x, screenspace_robot_center_y - (36./180) * state->height / 4, (96. / 180) * state->width * aspect_ratio / 2, (36. / 180) * state->height / 2};
+	SDL_FPoint arm_center = {0, (36. / 180) * state->height / 4};
+	if(mouse_down) {
+		SDL_RenderTextureRotated(state->renderer, state->armclose_sprite, NULL, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
+	} else {
+		SDL_RenderTextureRotated(state->renderer, state->armopen_sprite, NULL, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
+	}
+
 	SDL_FRect robot_rect = {screenspace_robot_center_x - robot_width_scsp / 2, screenspace_robot_center_y - robot_height_scsp / 2, robot_width_scsp, robot_height_scsp};
 
 	SDL_RenderTexture(state->renderer, state->robot_sprite, NULL, &robot_rect);
