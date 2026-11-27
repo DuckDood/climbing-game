@@ -167,7 +167,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	float arm_angle_diff = fabs(wished_arm_angle - real_arm_angle);
 	//arm_angle_diff *= arm_angle_diff;
 	arm_angle_diff = 1;
-	printf("arm_angle_diff: %f\n", arm_angle_diff);
 
 	if(mouse_down) {
 		state->arm_end.mass = 100;
@@ -302,17 +301,21 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
 
-	SDL_FRect arm_rect = {screenspace_robot_center_x, screenspace_robot_center_y - (36./180) * state->height / 4, (96. / 180) * state->width * aspect_ratio / 2, (36. / 180) * state->height / 2};
+
+	float t = -((state->arm_len - 0.6) / (0.8 - 0.6) + 0.5);
+	float offset = 52 * t;
+	SDL_FRect arm_srcrect = {offset /2, 0, 196-offset, 32};
+	SDL_FRect arm_rect = {screenspace_robot_center_x, screenspace_robot_center_y - (36./180) * state->height / 4, (96. / 180) * state->width * aspect_ratio / 2-offset, (36. / 180) * state->height / 2};
 	SDL_FPoint arm_center = {0, (36. / 180) * state->height / 4};
 	if(mouse_down) {
-		SDL_RenderTextureRotated(state->renderer, state->armclose_sprite, NULL, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
+		SDL_RenderTextureRotated(state->renderer, state->armclose_sprite, &arm_srcrect, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
 	} else {
-		SDL_RenderTextureRotated(state->renderer, state->armopen_sprite, NULL, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
+		SDL_RenderTextureRotated(state->renderer, state->armopen_sprite, &arm_srcrect, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
 	}
-
 	SDL_FRect robot_rect = {screenspace_robot_center_x - robot_width_scsp / 2, screenspace_robot_center_y - robot_height_scsp / 2, robot_width_scsp, robot_height_scsp};
 
 	SDL_RenderTexture(state->renderer, state->robot_sprite, NULL, &robot_rect);
+
 	//SDL_RenderRect(state->renderer, &robot_rect);
 	//SDL_BlitSurface(st->robot_sprite, , );
 
