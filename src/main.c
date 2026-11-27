@@ -26,7 +26,6 @@ struct appstate {
 
 	ball_2d arm_end;
 	vec2 arm_lock_pos;
-
 	float cam_x;
 	float cam_y;
 
@@ -252,7 +251,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 		state->cam_x = state->cam_x * 0.95 + state->arm_end.position.x * 0.05;
 	} else { 
 		state->cam_y = state->cam_y * 0.9 + state->robot.position.y * 0.1;
-		state->cam_x = state->cam_x * 0.99 + state->robot.position.x * 0.01;
+		state->cam_x = state->cam_x * 0.95 + state->robot.position.x * 0.05;
 	}
 
 
@@ -266,8 +265,11 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	}*/
 	vec2 output_ptr[2];
 
+	bool grounded = 0;
 
+	vec2 curr_pos = state->robot.position;
 	solve_constraint_2d(boundary_constraint_2d, (vec2*[]){&state->robot.position}, output_ptr, (float[]){1}, 1, &(boundary_args_2d){(vec2){0, 1}, (vec2){0, -1}, state->robot.radius}, 1/60., 0, INEQ_GREATER);
+	grounded = curr_pos.x != state->robot.position.x || curr_pos.y != state->robot.position.y;
 
 	solve_constraint_2d(boundary_constraint_2d, (vec2*[]){&state->arm_end.position}, output_ptr, (float[]){1}, 1, &(boundary_args_2d){(vec2){0, 1}, (vec2){0, -1}, state->arm_end.radius}, 1/60., 0, INEQ_GREATER);
 
@@ -277,10 +279,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 		state->arm_len = state->arm_len * 0.8 + 0.5 * 0.2;
 	}
 
-	if(kbd_state[SDL_SCANCODE_A]) {
+	if(kbd_state[SDL_SCANCODE_A] && (mouse_down || state->robot.velocity.x > -3)) {
 		state->robot.position.x -= 0.001;
 	}
-	if(kbd_state[SDL_SCANCODE_D]) {
+	if(kbd_state[SDL_SCANCODE_D] && (mouse_down || state->robot.velocity.x < 3)) {
 		state->robot.position.x += 0.001;
 	}
 
@@ -319,7 +321,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	//SDL_RenderRect(state->renderer, &robot_rect);
 	//SDL_BlitSurface(st->robot_sprite, , );
 
-	SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_center_x, screenspace_arm_center_y);
+	//SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_center_x, screenspace_arm_center_y);
 
 	SDL_RenderLine(state->renderer, 0, floor_y, 800, floor_y);
 
@@ -327,6 +329,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	end_ball_update_2d(&state->robot, 1/60.);
 	end_ball_update_2d(&state->arm_end, 1/60.);
+
+	if(grounded) {
+		state->robot.velocity = v2_fmult(state->robot.velocity, 0.95);
+	}
 
 	return SDL_APP_CONTINUE;
 }
