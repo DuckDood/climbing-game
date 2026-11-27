@@ -38,6 +38,8 @@ struct appstate {
 	//float arm_end_x;
 	//float arm_end_y;
 	
+	SDL_Texture *robot_sprite;
+
 	int width;
 	int height;
 };
@@ -59,6 +61,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 	if(!SDL_CreateWindowAndRenderer("climbing", 800, 600, 0, &state->window, &state->renderer)) {
 		goto exit;
 	}
+
+	state->robot_sprite = SDL_CreateTextureFromSurface(state->renderer, SDL_LoadPNG("resources/robot.png"));
+	SDL_SetTextureScaleMode(state->robot_sprite, SDL_SCALEMODE_PIXELART);
 
 	SDL_SetRenderVSync(state->renderer, 1);
 
@@ -289,7 +294,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
 	SDL_FRect robot_rect = {screenspace_robot_center_x - robot_width_scsp / 2, screenspace_robot_center_y - robot_height_scsp / 2, robot_width_scsp, robot_height_scsp};
 
-	SDL_RenderRect(state->renderer, &robot_rect);
+	SDL_RenderTexture(state->renderer, state->robot_sprite, NULL, &robot_rect);
+	//SDL_RenderRect(state->renderer, &robot_rect);
+	//SDL_BlitSurface(st->robot_sprite, , );
 
 	SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_center_x, screenspace_arm_center_y);
 
