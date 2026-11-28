@@ -57,6 +57,8 @@ struct appstate {
 	SDL_Texture *armopen_sprite;
 	SDL_Texture *armclose_sprite;
 
+	SDL_Texture *hold_sprite;
+
 	int width;
 	int height;
 };
@@ -87,6 +89,9 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 
 	state->armclose_sprite = SDL_CreateTextureFromSurface(state->renderer, SDL_LoadPNG("resources/armclose.png"));
 	SDL_SetTextureScaleMode(state->armclose_sprite, SDL_SCALEMODE_PIXELART);
+
+	state->hold_sprite = SDL_CreateTextureFromSurface(state->renderer, SDL_LoadPNG("resources/hold.png"));
+	SDL_SetTextureScaleMode(state->hold_sprite, SDL_SCALEMODE_PIXELART);
 
 	SDL_SetRenderVSync(state->renderer, 1);
 
@@ -334,6 +339,18 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_SetRenderDrawColor(state->renderer, 255, 0, 0, 255);
 
 
+	for(int i = 0; i < hold_count; i++) {
+		float width = holds[i].radius * state->width * aspect_ratio;
+		float height = holds[i].radius * state->height;
+
+		float x = TO_SCREENSPACE(holds[i].pos.x, state->cam_x, state->width, aspect_ratio);
+		float y = TO_SCREENSPACE(holds[i].pos.y, state->cam_y, state->height, 1);
+		//SDL_RenderRect(state->renderer, &(SDL_FRect){x - width / 2, y - height / 2, width, height});
+		SDL_FRect hold_rect = {x- width / 2, y - height / 2, width, height};
+		SDL_RenderTexture(state->renderer, state->hold_sprite, NULL, &hold_rect);
+	}
+
+
 	float t = -((state->arm_len - 0.6) / (0.8 - 0.6) + 0.5);
 	float offset = 52 * t;
 	SDL_FRect arm_srcrect = {offset /2, 0, 196-offset, 32};
@@ -347,16 +364,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_FRect robot_rect = {screenspace_robot_center_x - robot_width_scsp / 2, screenspace_robot_center_y - robot_height_scsp / 2, robot_width_scsp, robot_height_scsp};
 
 	SDL_RenderTexture(state->renderer, state->robot_sprite, NULL, &robot_rect);
-
-
-	for(int i = 0; i < hold_count; i++) {
-		float width = holds[i].radius * state->width * aspect_ratio;
-		float height = holds[i].radius * state->height;
-
-		float x = TO_SCREENSPACE(holds[i].pos.x, state->cam_x, state->width, aspect_ratio);
-		float y = TO_SCREENSPACE(holds[i].pos.y, state->cam_y, state->height, 1);
-		SDL_RenderRect(state->renderer, &(SDL_FRect){x - width / 2, y - height / 2, width, height});
-	}
 
 	//SDL_RenderRect(state->renderer, &robot_rect);
 	//SDL_BlitSurface(st->robot_sprite, , );
