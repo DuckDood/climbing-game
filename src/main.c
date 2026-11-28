@@ -59,6 +59,9 @@ struct appstate {
 
 	SDL_Texture *hold_sprite;
 
+	SDL_Texture *pixel_buffer;
+
+
 	int width;
 	int height;
 };
@@ -77,7 +80,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 		fprintf(stderr, "Failed to init SDL3: %s\n", SDL_GetError());
 	}
 
-	if(!SDL_CreateWindowAndRenderer("climbing", 800, 600, 0, &state->window, &state->renderer)) {
+	if(!SDL_CreateWindowAndRenderer("climbing", 1920, 1080, 0, &state->window, &state->renderer)) {
 		goto exit;
 	}
 
@@ -93,10 +96,15 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 	state->hold_sprite = SDL_CreateTextureFromSurface(state->renderer, SDL_LoadPNG("resources/hold.png"));
 	SDL_SetTextureScaleMode(state->hold_sprite, SDL_SCALEMODE_PIXELART);
 
+
+	state->pixel_buffer = SDL_CreateTexture(state->renderer, SDL_PIXELFORMAT_RGB24, SDL_TEXTUREACCESS_TARGET, 320, 240);
+	SDL_SetTextureScaleMode(state->pixel_buffer, SDL_SCALEMODE_NEAREST);
+
 	SDL_SetRenderVSync(state->renderer, 1);
 
-	state->width = 800;
-	state->height = 600;
+	SDL_GetWindowSize(state->window, &state->width, &state->height);
+	//state->width = state->window;
+	//state->height = 600;
 
 	state->robot.mass = 1;
 	state->robot.position = (vec2){0};
@@ -187,8 +195,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 
 
+	SDL_SetRenderTarget(state->renderer, state->pixel_buffer);
 	SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 255);
 	SDL_RenderClear(state->renderer);
+	SDL_SetRenderScale(state->renderer, (float)state->pixel_buffer->w /  state->width,  (float)state->pixel_buffer->h /  state->height);
 
 	float aspect_ratio = (float)state->height / state->width;
 
@@ -370,8 +380,15 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	//SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_center_x, screenspace_arm_center_y);
 
-	SDL_RenderLine(state->renderer, 0, floor_y, 800, floor_y);
+	SDL_RenderLine(state->renderer, 0, floor_y, state->width, floor_y);
 
+	SDL_RenderPresent(state->renderer);
+
+	SDL_SetRenderTarget(state->renderer, NULL);
+
+	SDL_SetRenderDrawColor(state->renderer, 0, 0, 0, 255);
+	SDL_RenderClear(state->renderer);
+	SDL_RenderTexture(state->renderer, state->pixel_buffer, NULL, NULL);
 	SDL_RenderPresent(state->renderer);
 
 	end_ball_update_2d(&state->robot, 1/60.);
