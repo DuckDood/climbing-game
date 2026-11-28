@@ -80,7 +80,7 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 		fprintf(stderr, "Failed to init SDL3: %s\n", SDL_GetError());
 	}
 
-	if(!SDL_CreateWindowAndRenderer("climbing", 1920, 1080, 0, &state->window, &state->renderer)) {
+	if(!SDL_CreateWindowAndRenderer("climbing", 800, 600, 0, &state->window, &state->renderer)) {
 		goto exit;
 	}
 
@@ -362,7 +362,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 
 	float t = -((state->arm_len - 0.6) / (0.8 - 0.6) + 0.5);
-	float offset = 52 * t;
+	float offset = ( (96. / 180) * state->width * aspect_ratio / 2/3) * t;
 	SDL_FRect arm_srcrect = {offset /2, 0, 196-offset, 32};
 	SDL_FRect arm_rect = {screenspace_robot_center_x, screenspace_robot_center_y - (36./180) * state->height / 4, (96. / 180) * state->width * aspect_ratio / 2-offset, (36. / 180) * state->height / 2};
 	SDL_FPoint arm_center = {0, (36. / 180) * state->height / 4};
