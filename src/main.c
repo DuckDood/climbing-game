@@ -164,6 +164,16 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 
 #define TO_SCREENSPACE(x, y, z, w) ((((x - y)*w) * 0.5 + 0.5) * z)
 
+// no clue i just wrote stuff without thinking
+float hash(int seed) {
+	seed *= seed * 23095238 + seed *37234234282;
+	seed += 358292342342;
+	seed ^= (seed ^ 384092380809) ^ seed;
+	seed *= (seed + 2934902384);
+	unsigned int useed = labs((long)seed);
+	return (double)useed / (double)4294967295. * 2;
+}
+
 SDL_AppResult SDL_AppIterate(void *appstate) {
 	struct appstate *state = appstate;
 
@@ -173,13 +183,26 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_MouseButtonFlags mouse_flags = SDL_GetMouseState(&mouse_x, &mouse_y);
 	int mouse_down = SDL_BUTTON_LMASK & mouse_flags;
 	int grabbed = 0;
-	if(mouse_down) {
-		for(int i = 0; i < hold_count; ++i) {
-			if(v2_magnitude(v2_sub(holds[i].pos, state->arm_end.position)) < holds[i].radius) {
-				grabbed = 1;
-			}
+
+	int closest_index = 0;
+	float closest_dist = INFINITY;
+	bool intersect = 0;
+	//if(mouse_down) {
+	for(int i = 0; i < hold_count; ++i) {
+
+		float distance = v2_magnitude(v2_sub(holds[i].pos, state->arm_end.position));
+		if(distance < closest_dist) {
+			closest_dist = distance;
+			closest_index = i;
 		}
+		//if(v2_magnitude(v2_sub(holds[i].pos, state->arm_end.position)) < holds[i].radius) {
+		if(distance < holds[i].radius) {
+			intersect = 1;
+		}
+		//}
 	}
+	grabbed = intersect && mouse_down;
+	//}
 
 	const _Bool *kbd_state = SDL_GetKeyboardState(NULL);
 
@@ -357,7 +380,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 		float y = TO_SCREENSPACE(holds[i].pos.y, state->cam_y, state->height, 1);
 		//SDL_RenderRect(state->renderer, &(SDL_FRect){x - width / 2, y - height / 2, width, height});
 		SDL_FRect hold_rect = {x- width / 2, y - height / 2, width, height};
-		SDL_RenderTexture(state->renderer, state->hold_sprite, NULL, &hold_rect);
+		SDL_RenderTextureRotated(state->renderer, state->hold_sprite, NULL, &hold_rect, hash(i) * 360, NULL, SDL_FLIP_NONE);
 	}
 
 
@@ -380,7 +403,9 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	//SDL_RenderLine(state->renderer, screenspace_robot_center_x, screenspace_robot_center_y, screenspace_arm_center_x, screenspace_arm_center_y);
 
-	SDL_RenderLine(state->renderer, 0, floor_y, state->width, floor_y);
+	SDL_RenderLine(state->renderer, 0, floor_y + 0, state->width, floor_y + 0);
+	SDL_RenderLine(state->renderer, 0, floor_y + 1, state->width, floor_y + 1);
+	SDL_RenderLine(state->renderer, 0, floor_y + 2, state->width, floor_y + 2);
 
 	SDL_RenderPresent(state->renderer);
 
