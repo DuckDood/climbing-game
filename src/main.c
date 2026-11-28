@@ -12,6 +12,21 @@
 #define M_PI 3.141592653589793238462643
 #endif
 
+
+typedef struct {
+	vec2 pos;
+	float radius;
+} hold;
+
+hold holds[] = {
+	{{0, -0.1}, 0.1},
+	{{1, 0.3}, 0.1},
+	{{2, -0.1}, 0.1},
+	{{3, -0.1}, 0.1},
+	{{6, -2}, 0.1},
+};
+int hold_count = 5;
+
 struct appstate {
 	SDL_Window *window;
 	SDL_Renderer *renderer;
@@ -120,7 +135,13 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
 			return SDL_APP_SUCCESS;
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
-			state->arm_lock_pos = state->arm_end.position;
+			/*state->arm_lock_pos = state->arm_end.position;
+			int grabbed = 0;
+			for(int i = 0; i < hold_count; ++i) {
+				if(v2_magnitude(v2_sub(holds[i].pos, state->arm_end.position)) < holds[i].radius) {
+					grabbed = 1;
+				}
+			}*/
 			break;
 	}
 
@@ -138,13 +159,22 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 
 	SDL_MouseButtonFlags mouse_flags = SDL_GetMouseState(&mouse_x, &mouse_y);
 	int mouse_down = SDL_BUTTON_LMASK & mouse_flags;
+	int grabbed = 0;
+	if(mouse_down) {
+		for(int i = 0; i < hold_count; ++i) {
+			if(v2_magnitude(v2_sub(holds[i].pos, state->arm_end.position)) < holds[i].radius) {
+				grabbed = 1;
+			}
+		}
+	}
 
 	const _Bool *kbd_state = SDL_GetKeyboardState(NULL);
 
 	state->robot.velocity.y += 0.05;
 	state->arm_end.velocity.y += 0.05;
 
-	if(mouse_down) {
+	if(grabbed) {
+		state->arm_lock_pos = state->arm_end.position;
 		v2_fmult(state->arm_end.velocity, 0);
 	}
 	begin_ball_update_2d(&state->robot, 1./60);
@@ -167,7 +197,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	//arm_angle_diff *= arm_angle_diff;
 	arm_angle_diff = 1;
 
-	if(mouse_down) {
+	if(grabbed) {
 		state->arm_end.mass = 100;
 		state->arm_end.position = state->arm_lock_pos;
 	} else {
@@ -246,7 +276,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	//state->robot_velocity_y += 0.001;
 
 	//state->cam_x = (state->cam_x + state->robot_pos_x) * 0.5;
-	if(mouse_down) {
+	if(grabbed) {
 		state->cam_y = state->cam_y * 0.95 + state->arm_end.position.y * 0.05;
 		state->cam_x = state->cam_x * 0.95 + state->arm_end.position.x * 0.05;
 	} else { 
@@ -279,10 +309,10 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 		state->arm_len = state->arm_len * 0.8 + 0.5 * 0.2;
 	}
 
-	if(kbd_state[SDL_SCANCODE_A] && (mouse_down || state->robot.velocity.x > -3)) {
+	if(kbd_state[SDL_SCANCODE_A] && (grabbed || state->robot.velocity.x > -3)) {
 		state->robot.position.x -= 0.001;
 	}
-	if(kbd_state[SDL_SCANCODE_D] && (mouse_down || state->robot.velocity.x < 3)) {
+	if(kbd_state[SDL_SCANCODE_D] && (grabbed || state->robot.velocity.x < 3)) {
 		state->robot.position.x += 0.001;
 	}
 
@@ -309,7 +339,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_FRect arm_srcrect = {offset /2, 0, 196-offset, 32};
 	SDL_FRect arm_rect = {screenspace_robot_center_x, screenspace_robot_center_y - (36./180) * state->height / 4, (96. / 180) * state->width * aspect_ratio / 2-offset, (36. / 180) * state->height / 2};
 	SDL_FPoint arm_center = {0, (36. / 180) * state->height / 4};
-	if(mouse_down) {
+	if(grabbed) {
 		SDL_RenderTextureRotated(state->renderer, state->armclose_sprite, &arm_srcrect, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
 	} else {
 		SDL_RenderTextureRotated(state->renderer, state->armopen_sprite, &arm_srcrect, &arm_rect, real_arm_angle / M_PI * 180, &arm_center, SDL_FLIP_NONE);
@@ -317,6 +347,16 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
 	SDL_FRect robot_rect = {screenspace_robot_center_x - robot_width_scsp / 2, screenspace_robot_center_y - robot_height_scsp / 2, robot_width_scsp, robot_height_scsp};
 
 	SDL_RenderTexture(state->renderer, state->robot_sprite, NULL, &robot_rect);
+
+
+	for(int i = 0; i < hold_count; i++) {
+		float width = holds[i].radius * state->width * aspect_ratio;
+		float height = holds[i].radius * state->height;
+
+		float x = TO_SCREENSPACE(holds[i].pos.x, state->cam_x, state->width, aspect_ratio);
+		float y = TO_SCREENSPACE(holds[i].pos.y, state->cam_y, state->height, 1);
+		SDL_RenderRect(state->renderer, &(SDL_FRect){x - width / 2, y - height / 2, width, height});
+	}
 
 	//SDL_RenderRect(state->renderer, &robot_rect);
 	//SDL_BlitSurface(st->robot_sprite, , );
